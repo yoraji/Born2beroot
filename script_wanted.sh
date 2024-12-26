@@ -1,59 +1,40 @@
-#!/bin/bash
+#! /bin/bash
 
-# Display System Architecture Of you machine
 arc=$(uname -a)
 
-# CPU physical cores
-pcpu=$(grep -c "^processor" /proc/cpuinfo)
+physicl_cpu=$(grep 'physical id' /proc/cpuinfo | sort | uniq | wc -l)
+virtual_cpu=$(grep "^processor" /proc/cpuinfo | sort | uniq | wc -l)
 
-# vCPU (virtual CPUs)
-vcpu=$(lscpu | awk '/^CPU\(s\):/ {print $2}')
+uram=$(free -m | grep Mem | awk '{print $3}')
+fram=$(free -m | grep Mem | awk '{print $2}')
+parm=$(free -m | grep Mem | awk '{printf("%.2f", $3/$2*100)}')
 
-# Memory Usage
-uram=$(free -m | awk '/Mem:/ {print $3}')
-fram=$(free -m | awk '/Mem:/ {print $2}')
-pram=$(awk "BEGIN {printf \"%.2f\", ($uram/$fram)*100}")
-
-# Disk Usage
 udisk=$(df -h --total | awk '/^total/ {print $3}')
 fdisk=$(df -h --total | awk '/^total/ {print $2}')
-pdisk=$(df --total | awk '/^total/ {printf("%.2f", $3/$2*100)}')
+perce=$(df -h --total | awk '/^total/ {printf("%.2f", $3/$2*100)}')
 
-# CPU Load
-cpul=$(top -bn1 | grep '^%Cpu' | awk '{printf("%.1f%%", $2 + $4)}')
+cpul=$(uptime | awk '{printf("%.1f%", $9)}')
+last_boot=$(who -b | awk '{print $3, $4}' )
 
-# Last Boot
-lb=$(who -b | awk '{print $3, $4}')
+lvmt=$(lsblk | grep "lvm" | wc -l | awk '{if($1 != 0) {printf("yes");} else printf("no");}')
+ctcp=$(ss -t | grep ESTAB | wc -l)
 
-# LVM Usage
-lvmt=$(lsblk | grep "lvm" | wc -l)
-lvmu=$(if [ $lvmt -eq 0 ]; then echo no; else echo yes; fi)
+ulog=$(who |awk '{print $1}' |  uniq | wc -l)
 
-# TCP Connections
-ctcp=$(cat /proc/net/sockstat{,6} | awk '$1 == "TCP:" {print $3}')
+ip=$(hostname -I | awk  '{print $1}')
+mac=$(ip a | grep link/ether | head -n 1 | awk '{print $2}')
 
-# User Log
-ulog=$(who | wc -l)
+cmds=$(grep COMMAND /var/log/sudo/sudo.log | wc -l)
 
-# Network Information
-ip=$(hostname -I | xargs)
-mac=$(ip link show | awk '$1 == "link/ether" {print $2}')
-
-# Sudo Commands
-cmds=$(journalctl _COMM=sudo | grep COMMAND | wc -l)
-
-# Display Information
 wall "	#Architecture: $arc
-	#CPU physical: $pcpu
-	#vCPU: $vcpu
-	#Memory Usage: $uram/${fram}MB ($pram%)
-	#Disk Usage: $udisk/${fdisk}Gb ($pdisk%)
+	#CPU physical: $physicl_cpu
+	#vCPU: $virtual_cpu
+	#Memory Usage: $uram/${fram}MB ($parm%)
+	#Disk Usage: $udisk/${fdisk}B ($perce)
 	#CPU load: $cpul
-	#Last boot: $lb
-	#LVM use: $lvmu
-	#Connexions TCP: $ctcp ESTABLISHED
+	#Last boot : $last_boot
+	#LVM use: $lvmt
+	#Connexion TCP : $ctcp ESTABLISHED
 	#User log: $ulog
 	#Network: IP $ip ($mac)
 	#Sudo: $cmds cmd"
-	
-	 
